@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <title>SF Eviction Notices 1997-2015</title>
+    <script type="text/javascript" src="http://d3js.org/d3.v3.js"></script>
+<style type="text/css">
+
+body {
+    font-family:  "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    background-color: white;
+    padding: 50px;
+    }
+h1  {
+    margin-left: 50px;
+    }
+p   {
+    max-width: 1000px;
+    margin-left: 50px;
+    }
+figure { 
+    display: block;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    margin-left: 40px;
+    margin-right: 40px;
+    }
+figcaption {
+    padding: 5px;
+    font-family: ;
+    font-size: 0.8em;
+    font-weight: 700;
+    border: none;
+    background: transparent;
+    word-wrap:normal;
+    text-align: center;
+    }
+em {
+    color: black; 
+    font-weight: bold;
+    font-style: italic;
+    }
+em1 {
+    color: darkred; 
+    font-weight: bold;
+    font-style: italic;
+    }
+svg {
+    background-color: white;
+    }
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+
+.highlight { stroke: #fc0; }
+</style>
+</head>
+  <body>
+    <figure>
+        <img src = "http://media1.fdncms.com/sfexaminer/imager/evictions/u/original/2627321/evictions_mural.jpg" width = "1000" height = "547" alt=""/>       
+        <figcaption style="text-align:left">PHOTO CREDIT: MIKE KOOZMIN/THE S.F. EXAMINER, November 15, 2013 </figcaption>
+    </figure>
+    
+    <h1> SF Eviction Notices from 1997 - 2015,<em1> a first look</em1></h1>
+    <p>Mouse over the lines or the neighborhood names to see in what <em>years</em> and in what San Francisco <em>neighborhoods</em> the number of eviction notices has been the greatest. Were the high eviction rates (<em1>or at least</em1> eviction notice rates) in the Mission simply the result more total households in the Mission?</p>
+    
+    <p style="font-size:80%">Eviction notice data from <a href="https://data.sfgov.org/Housing-and-Buildings/Eviction-Notices/5cei-gny5">data.sfgov.org</a> and households per neighborhood data from US Census ACS 5-year Average (2008-2013)</p>
+
+<body>
+
+<script type="text/javascript">
+
+var margin = {top: 20, right: 250, bottom: 50, left: 70},
+    width = 1200 - margin.left - margin.right,
+    height = 700 - margin.top - margin.bottom;
+
+var parseDate = d3.time.format("%Y").parse;
+
+var x = d3.time.scale()
+    .range([0, width]);
+
+var y = d3.scale.linear()
+    .range([height-5, 0]);
+
+var curve = d3.scale.ordinal();
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom");
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var line = d3.svg.line()
+    .defined(function(d) { return !isNaN(d.TotalEviction); })
+    .interpolate("monotone")
+    .x(function(d) { return x(d.Year); })
+    .y(function(d) { return y(d.TotalEviction); });
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+
+d3.csv("SF_EvictionNoticesPer1000Household_Total_Wide.csv", function(error, data) {
+  curve.domain(d3.keys(data[0]).filter(function(key) { return key !== "Year"; }));
+
+  data.forEach(function(d) {
+    d.Year = parseDate(d.Year);
+  });
+
+  var sources = curve.domain().map(function(name) {
+    return {
+      name: name,
+      values: data.map(function(d) {
+        return {Year: d.Year, TotalEviction: +d[name]};
+      })
+    };
+  });
+
+  x.domain(d3.extent(data, function(d) { return d.Year;}));
+
+  y.domain([
+    d3.min(sources, function(c) { return d3.min(c.values, function(v) { return v.TotalEviction; }); }),
+    d3.max(sources, function(c) { return d3.max(c.values, function(v) { return v.TotalEviction; }); })
+  ]);
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .attr("y", margin.bottom/1) //smaller divider moves down
+      .attr("x",width/2)
+      .text("Year")
+      .attr("font-family","serif")
+      .attr("font-size","16px");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y",-margin.top*3.3) //bigger mulitplier moves to the left
+      .attr("x",-height/2)  //smaller divider moves up
+      .attr("dy", ".71em")
+      .style("text-anchor", "middle")
+      .text("Total Eviction Notices per 1000 Households")
+      .attr("font-family","serif")
+      .attr("font-size","16px");
+
+      
+  var source = svg.selectAll(".source")
+      .data(sources)
+    .enter().append("g")
+      .attr("class", "source");
+  
+   source.append("path")
+      .attr("class", "line")
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", "lightgrey")  //initial path-line color
+      .on("mouseover", function(d){
+        d3.select(this)
+          .style("stroke", "#5254a3")  //line color with line moveover
+          .style("stroke-width","3px");
+          //.style("stroke",function(d) {return color(d.name);});
+          this.parentNode.parentNode.appendChild(this.parentNode);
+        d3.select('#text-' + d.name)
+          .style("stroke", "#5254a3") //text color, size with line mouseover
+          .style("font-style","bold")
+          .style("font-size", "18");  
+          //.style("stroke",function(d) {return color(d.name);});
+          
+      })
+      .on("mouseout", function(d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .style("stroke", "lightgrey")  //line color when line mouseout
+            .style("stroke-width","1.5px");
+          d3.select('#text-' + d.name)
+            .transition()
+            .duration(200)
+            .style("stroke", "#646464")  //text color, size when line mouseout
+            .style("font-style","normal")
+            .style("font-size", "14");
+          })
+    .attr("id", function(d, i) { return "path-" + d.name; });
+    
+  
+
+  source.append("text")
+      .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
+      .attr("transform", function(d, i) {return "translate("+x(d.value.Year * .99)+","+ y((i)*1.2)+")";})
+      .attr("x", 40)
+      .attr("dy", ".35em")
+      .style("stroke", "#646464")  //initial text color
+      .on("mouseover", function(d){
+    d3.select('#path-' + d.name)
+       .style("stroke", "#5254a3")   //line-path color with text mouseover
+       .style("stroke-width","3px");
+       //.style("stroke",function(d) {return color(d.name);});
+       this.parentNode.parentNode.appendChild(this.parentNode);
+    d3.select(this)
+        .style("stroke", "#5254a3") //text color,style, size with text mouseover
+        .style("font-style", "bold")
+        .style("font-size","18");
+        //.style("stroke",function(d) {return color(d.name);});
+      })
+      .on("mouseout", function(d) {
+    d3.select('#path-' + d.name)
+      .transition()
+      .duration(200)
+      .style("stroke", "lightgrey")   //line-path color with text mouseout
+      .style("stroke-width","1.5px");
+    d3.select(this)
+      .transition()
+      .duration(200)
+      .style("stroke", "#646464")  //text color,style,size with text mouseout
+      .style("font-style","normal")
+      .style("font-size","14");
+    })
+      .text(function(d) { return d.name; })
+      .attr("font-family","serif")
+      .attr("font-size","14px")
+      .attr("id", function(d, i) { return "text-" + d.name; });     
+  
+});
+
+</script>
